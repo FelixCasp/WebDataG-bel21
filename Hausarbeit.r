@@ -4,7 +4,17 @@
 suppressWarnings(if (!require("pacman")) install.packages("pacman"))
 
 # load packages and install if not installed --------------------------------------------
-pacman::p_load(tidyverse,car, survey, naniar, gapminder, foreign, srvyr,readr, readxl,haven, mice, mitools, purrr, dplyr,
+pacman::p_load(tidyverse,car, 
+               survey, 
+               naniar, 
+               gapminder, 
+               foreign, 
+               srvyr,
+               readr,
+               haven, 
+               mice, 
+               mitools, 
+               dplyr,
                magrittr,
                purrr,
                lubridate,
@@ -88,8 +98,16 @@ ltw_url_parsed <- xml2::url_parse(ltw_url)
 ltw_robotstxt <- ltw_url_parsed$server %>%  
   robotstxt()
 ltw_url_parsed$path %>%
+  
   ltw_robotstxt$check()
 ltw_robotstxt$crawl_delay
+
+
+if(! ltw_url_parsed$path %>%
+   ltw_robotstxt$check())
+(
+  stop(message="STOPPING, we are not allowed to scrape"))
+
 
 # parse html files ----------------------------------------------------------------------
 ltw_parsed <- path %>%
@@ -108,8 +126,8 @@ ltw_node %>%
   rvest::html_table(fill = TRUE) %>% 
   View()
 
-tables <- ltw_parsed %>% html_table(fill = TRUE) #zieht alle tables aus der seite 
-fi_ltw_table <- tables[[14]] # hier die nummer einfÃ¼gen, um die table nummer aus tables zu erhalten!
+tables <- ltw_parsed %>% html_table(fill = TRUE) #assigning list of tables into tables variable 
+fi_ltw_table <- tables[[14]] # Number 14-17 are giving us the information we want. First, Second,third and fourth ltw table are created in order to prepare for a join 
 se_ltw_table <- tables[[15]]
 th_ltw_table <- tables[[16]]
 fo_ltw_table <- tables[[17]]
@@ -120,7 +138,7 @@ fo_ltw_table <- tables[[17]]
 
 
 
-ge_tables_21 <- tables[[1]]# make general table for results 
+ge_tables_21 <- tables[[1]]# make general table for results across all the voting district 62 
 ge_tables_21 <- ge_tables_21 %>% filter(row_number() %% 2 != 0) ## Delete even-rows because they are uninformative
 ge_tables_21 <- ge_tables_21[,-(2:3)] #delete uninformative column
 ge_tables_21 <- ge_tables_21 %>% slice(c(1:5, 11))#delete the minor parties because of better visualisation
@@ -139,7 +157,7 @@ newnames = c("Party","Result","Change", "Vote Share")
 ge_tables_21 <- ge_tables_21 %>% rename_at(vars(oldnames), ~ newnames)
 
 ix <- 2:4
-ge_tables_21[ix] <- lapply(ge_tables_21[ix], as.numeric) 
+ge_tables_21[ix] <- lapply(ge_tables_21[ix], as.numeric) #use column index to perform as numeric
 
 
 
@@ -152,8 +170,8 @@ ggplot(data = ge_tables_21, mapping = aes(x = Party, y = Result, fill= Party)) +
 
 
 ggplot(data = ge_tables_21, mapping = aes(x = Party, y = Change, fill= Party)) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle('2021 state level BW') + 
-  geom_bar(stat = "identity") + scale_fill_manual("legend", values = c("CDU" = "black", "AfD" = "blue", "GRÜNE" = "darkgreen", "SPD" = "Red", "FDP" = "yellow",  "DIE LINKE" =   "darkred")) + labs(x = "Party") + ylab("Votes share")  + geom_text(aes(label=Change), position=position_dodge(width=0.9), vjust=.5)
+  ggtitle('2021 state level BW turnout') + 
+  geom_bar(stat = "identity") + scale_fill_manual("legend", values = c("CDU" = "black", "AfD" = "blue", "GRÜNE" = "darkgreen", "SPD" = "Red", "FDP" = "yellow",  "DIE LINKE" =   "darkred")) + labs(x = "Party") + ylab("Votes share")  
 ###Wie kriege ich die labels hier schon platziert?
 
 
@@ -164,13 +182,6 @@ ggplot(data = ge_tables_21, mapping = aes(x = Party, y = Change, fill= Party)) +
 
 
 # Continue merging the different subtables into one large dataframe ==========================================================
-
-
-
-ltw <- merge(x = first_ltw_table, y = se_ltw_table, by = "Wahlbezirk")
-
-ltw <- left_join(first_ltw_table, se_ltw_table,by = "Wahlbezirk")
-
 
 ltw <- full_join(fi_ltw_table, se_ltw_table)# full join is necessary, since 
 ltw <- full_join(ltw, th_ltw_table)
@@ -187,7 +198,7 @@ ltw <- full_join(ltw, fo_ltw_table)
 
 #Data Cleaning
 
-ltw_de <- subset(ltw, `Wahl-berech-tigte` > 2)#get the wahlberechtigte voters that have "round decimals" 
+ltw_de <- subset(ltw, `Wahl-berech-tigte` > 2)#get the wahlberechtigte voters  
 
 ltw_de1<-ltw[!(ltw$`Wahl-berech-tigte`>2),]#get subset of the values that do have decimals 
 
@@ -204,7 +215,7 @@ ltw <- full_join(ltw_de1, ltw_de)
 
 #deletion of data I do not need for the further cleaning process
 ltw <- select(ltw, -c(11:15))
-ltw <- select(ltw, -11)
+#ltw <- select(ltw, -11)
 
 #check for more problems in data classes
 map(ltw_de1, class)
@@ -212,16 +223,16 @@ map(ltw_de1, class)
 
 #regular expression cleaning
 
-ltw_reg_ch <- ltw
+ltw_reg_ch <- ltw ##assign new object for regular expression cleaning
 
 
-ltw_reg_ch$GRÜNE <- gsub("\\%.*","",ltw_reg_ch$GRÜNE) 
+ltw_reg_ch$GRÜNE <- gsub("\\%.*","",ltw_reg_ch$GRÜNE) ##remove everything after the %
 
 # extract 18-24th characters in string
-ltw_reg_ch$GRÜNE <- substr(ltw_reg_ch$GRÜNE, start = 4, stop=20)
+ltw_reg_ch$GRÜNE <- substr(ltw_reg_ch$GRÜNE, start = 4, stop=20) #in order to clean around the given number of interest. 20 is a little bit random, but it is big enough to cut enought content. 
 
 
-#switch "," with "." in order to prepare for conflicts with type conversion(keeping )
+#switch "," with "." in order to prepare for conflicts with type conversion
 
 ltw_reg_ch$GRÜNE <- gsub(",",".",ltw_reg_ch$GRÜNE) 
 
@@ -240,7 +251,7 @@ ggplot(data = ltw_reg_ch, mapping = aes(x = Wahlbezirk, y = GRÜNE)) + theme(axis
   ggtitle('Voting Results across districts') + 
   geom_bar(stat = "identity", , fill = "Darkgreen") +
   labs(x = "Voting Districts") + ylab("Vote-Share")
-#at first glance it seems there is an outlier for bebenhausen the district Französisches Viertel was once coined "Green Hell" by a German jorunalist.
+#at first glance it seems there is an outlier for bebenhausen. Furthermore the district Französisches Viertel was once coined "Green Hell" by a German jorunalist.
 #need for correcting the bebenhausen result
 
 ltw_reg_ch[51, 7]<- 35.3 # select rows and columns
