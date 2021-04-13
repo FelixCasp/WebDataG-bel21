@@ -254,7 +254,7 @@ ggplot(data = ltw_reg_ch, mapping = aes(x = Wahlbezirk, y = GRÜNE)) + theme(axis
 #at first glance it seems there is an outlier for bebenhausen. Furthermore the district Französisches Viertel was once coined "Green Hell" by a German jorunalist.
 #need for correcting the bebenhausen result
 
-ltw_reg_ch[51, 7]<- 35.3 # select rows and columns
+ltw_reg_ch[51, 7]<- 35.3 # select rows and columns and manually include value
 
 
 #calculating turnout from eligible voters in relation to valid votes
@@ -291,15 +291,14 @@ ggplot(data = ltw_reg_ch, mapping = aes(x = Wahlbezirk, y = turnout)) + theme(ax
 
  ltw_fin <- ltw_reg_ch
 
- #ltw_fin$ps_base <- ltw_fin$turnout + (ltw_fin$GRÜNE *100000)
- 
+
  
  ltw_fin$ps_base <- 10+round(10*(2* (ltw_fin$GRÜNE/max(ltw_fin$GRÜNE))+(ltw_fin$turnout/max(ltw_fin$turnout))))
  ltw_fin$ps_1_100<-  round(scales::rescale(-ltw_fin$ps_base, to = c(100, 25))) #due to the fact that the number of units is very small a scale between 1 and 100 starting from 0 would stretch the values to strong leading to missperception in potential evaluation. 
  
 
  ggplot(data = ltw_fin, mapping = aes(x = Wahlbezirk, y = ps_1_100)) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle('turnout results across districts') + 
+  ggtitle('Turnout results across districts') + 
   geom_bar(stat = "identity", , fill = "Darkred") +
   labs(x = "Voting Districts") + ylab("Potential Score")
  
@@ -628,130 +627,3 @@ ggplot(data = ltw_reg_ch, mapping = aes(x = Wahlbezirk, y = turnout)) + theme(ax
  
 
 # ==============================================================================================================================================================================
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- ####LTW ELECTION 2021
-
- 
- 
- 
- # assign url ----------------------------------------------------------------------------
- ltw_url_21 <- "https://wahlergebnisse.komm.one/04/produktion/wahltermin-20210314/08416041/html5/Landtagswahl_BW_2021_Land_BW_172_Uebersicht_stbz.html"
- 
- 
- # parse url -----------------------------------------------------------------------------
- xml2::url_parse(ltw_url_21)
- 
- 
- # open url in browser -------------------------------------------------------------------
- browseURL(ltw_url_21)
- 
- 
- # name of current html ------------------------------------------------------------------
- LTW21 <- stringr::str_c(basename(ltw_url_21), ".html")
- 
- # create a folder to store htmls --------------------------------------------------------
- path <- file.path("htmls")
- if (!dir.exists("htmls")) {
-   path %>%
-     dir.create(recursive = TRUE)
- }
- ###Download of state level election data
- 
- # download the html file ----------------------------------------------------------------
- xml2::download_html(url = ltw_url_21,
-                     file = file.path(path, LTW21))
- 
- # adjust user_agent ---------------------------------------------------------------------
- str_c("felixcaspari@live.de", 
-       "collecting data for study purposes",
-       R.version$platform,
-       R.version$version.string,
-       sep = ", ") %>%
-   httr::user_agent() %>%
-   httr::set_config()
- 
- # assign and parse urls ---------------------------------------------------------------------------
- ltw_url_parsed_21 <- xml2::url_parse(ltw_url_21)
- 
- 
- 
- # ask for permission --------------------------------------------------------------------
- ltw_robotstxt <- ltw_url_parsed_21$server %>%  
-   robotstxt()
- ltw_url_parsed_21$path %>%
-   ltw_robotstxt_21$check()
- ltw_robotstxt_21$crawl_delay
- 
- # parse html files ----------------------------------------------------------------------
- ltw_parsed_21 <- path %>%
-   file.path(LTW21) %>%
-   xml2::read_html()
- ltw_parsed_21
- 
- # absolute path to node
- ltw_node_21 <- ltw_parsed_21%>%
-   rvest::html_node(xpath = "//table")
- 
- 
- # content of node
- ltw_node_21 %>%
-   rvest::html_table(fill = TRUE) %>% 
-   View()
- 
